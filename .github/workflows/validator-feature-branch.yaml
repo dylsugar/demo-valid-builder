@@ -1,80 +1,80 @@
 on:
-    push:
-        branches:
-        - 'releases/**'
-        paths:
-        - 'python-projects/**'
-        - 'java-projects/**'
+  push:
+      branches:
+      - 'releases/**'
+      paths:
+      - 'python-projects/**'
+      - 'java-projects/**'
 
 jobs:
-    push_to_build_jar: 
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Java 8 condition build
-              if: contains(github.path, '.jar')
-              uses: actions/setup-java@v3
-              with:
-                java-version: '11'
-                distribution: 'temurin'
-                architecture: x64
-    build_to_package_jar:
-        runs-on: ubuntu-latest
-        needs: [push_to_build_jar]
-        steps:
-           - name: Java 8 Package        
-             run: | 
-                echo 'Starting build of Jar file...'
-                mvn --batch-mode --update-snapshots verify
-                mkdir staging && cp target/*.jar staging
+  push_to_build_jar: 
+      runs-on: ubuntu-latest
+      steps:
+          - uses: actions/checkout@v4
+          - name: Java 8 condition build
+            if: contains(github.path, '.jar')
+            uses: actions/setup-java@v3
+            with:
+              java-version: '11'
+              distribution: 'temurin'
+              architecture: x64
+  build_to_package_jar:
+      runs-on: ubuntu-latest
+      needs: [push_to_build_jar]
+      steps:
+         - name: Java 8 Package        
+           run: | 
+              echo 'Starting build of Jar file...'
+              mvn --batch-mode --update-snapshots verify
+              mkdir staging && cp target/*.jar staging
 
-    package_to_artifact_jar:
-        runs-on: ubuntu-latest
-        needs: build_to_package_jar
-        steps:    
-            - uses: actions/upload-artifact@v3
-              with:
-                name: Package
-                path: staging
-            - run: echo 'Build status - ${{ job.status }}'
-            - run: echo 'If building in a container or gradle/maven package, you can also use the job object to get additional context'
-    
-    scan_job_jar:
-        runs-on: ubuntu-latest
-        needs: package_to_artifact_jar
-        steps:
-          - name: SAST Scans
-            run: echo "SAST Scan credentials will go here"
+  package_to_artifact_jar:
+      runs-on: ubuntu-latest
+      needs: build_to_package_jar
+      steps:    
+          - uses: actions/upload-artifact@v3
+            with:
+              name: Package
+              path: staging
+          - run: echo 'Build status - ${{ job.status }}'
+          - run: echo 'If building in a container or gradle/maven package, you can also use the job object to get additional context'
+  
+  scan_job_jar:
+      runs-on: ubuntu-latest
+      needs: package_to_artifact_jar
+      steps:
+        - name: SAST Scans
+          run: echo "SAST Scan credentials will go here"
+          env:
+            SAST_USERNAME: secret_username
+            SAST_PASSWORD: secret_password
+  
+  push_to_build_python:
+      runs-on: ubuntu-latest
+      steps:
+          - uses: actions/checkout@v4
+          - name: Python Build Scan and Execution
+            if: contains(github.path, '.py')
+            uses: actions/setup-python@v3
+            with:
+                  python-version: '3.x'
+          - name: Install Dependencies
+            run: |
+              python -m pip install --upgrade pip
+
+  scan_job_python:
+      runs-on: ubuntu-latest
+      needs: push_to_build_python
+      steps:
+          - uses: actions/upload-artifact@v3
+            with:
+              name: Package
+              path: staging
+          - run: echo 'Build status - ${{ job.status }}'
+          - run: echo 'If building in a container or gradle/maven package, you can also use the job to get additional context'
+          - run: echo "SAST Scan credentials will go here"
             env:
               SAST_USERNAME: secret_username
               SAST_PASSWORD: secret_password
-    
-    push_to_build_python:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - name: Python Build Scan and Execution
-              if: contains(github.path, '.py')
-              uses: actions/setup-python@v3
-              with:
-                    python-version: '3.x'
-            - name: Install Dependencies
-              run: |
-                python -m pip install --upgrade pip
-
-    scan_job_python:
-        runs-on: ubuntu-latest
-        needs: push_to_build_python
-        steps:
-            - uses: actions/upload-artifact@v3
-              with:
-                name: Package
-                path: staging
-            - run: echo 'Build status - ${{ job.status }}'
-            - run: echo 'If building in a container or gradle/maven package, you can also use the job to get additional context'
-            - run: echo "SAST Scan credentials will go here"
-              env:
-                SAST_USERNAME: secret_username
-                SAST_PASSWORD: secret_password
 
         
